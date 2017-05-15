@@ -41,6 +41,7 @@
 #include "theia/alignment/alignment.h"
 #include "theia/image/descriptor/create_descriptor_extractor.h"
 #include "theia/util/util.h"
+#include "theia/image/image.h"
 
 namespace theia {
 class Keypoint;
@@ -77,6 +78,10 @@ class FeatureExtractor {
                std::vector<std::vector<Keypoint> >* keypoints,
                std::vector<std::vector<Eigen::VectorXf> >* descriptors);
 
+  bool Extract(const std::vector<FloatImage>& images,
+               std::vector<std::vector<Keypoint> >* keypoints,
+               std::vector<std::vector<Eigen::VectorXf> >* descriptors);
+
   // Extracts descriptors and writes them to disk. The features from each image
   // are written to individual files in the directory specified in the options.
   bool ExtractToDisk(const std::vector<std::string>& filenames);
@@ -85,6 +90,10 @@ class FeatureExtractor {
   // Extracts the features and metadata for a single image. This function is
   // called by the threadpool and is thus thread safe.
   bool ExtractFeatures(const std::string& filename,
+                       std::vector<Keypoint>* keypoints,
+                       std::vector<Eigen::VectorXf>* descriptors);
+
+  bool ExtractFeaturesFromImage(const FloatImage& image,
                        std::vector<Keypoint>* keypoints,
                        std::vector<Eigen::VectorXf>* descriptors);
 
