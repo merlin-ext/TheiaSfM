@@ -47,7 +47,7 @@ namespace theia {
 // the caller to choose to appropriate RGB vs grayscale method.
 class FloatImage {
  public:
-  FloatImage() {}
+  FloatImage();
 
   // Read from file.
   explicit FloatImage(const std::string& filename);
@@ -162,11 +162,12 @@ class FloatImage {
   // otherwise floating roundoff errors are sure to occur.
   void Integrate(FloatImage* integral) const;
 
-  // Computes a fast approximate gaussian blur of te image.
-  void ApproximateGaussianBlur(const double sigma);
+  // Computes a fast approximate gaussian blur of the image.
+  void ApproximateGaussianBlur(const int kernel_size);
 
   // Resize using a Lanczos 3 filter.
   void Resize(int new_width, int new_height);
+  void Resize(int new_width, int new_height, int num_channels);
   void ResizeRowsCols(int new_rows, int new_cols);
   void Resize(double scale);
 

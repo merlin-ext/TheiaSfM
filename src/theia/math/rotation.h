@@ -1,4 +1,4 @@
-// Copyright (C) 2014 The Regents of the University of California (Regents).
+// Copyright (C) 2017 The Regents of the University of California (Regents).
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -32,42 +32,18 @@
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
 
+#ifndef THEIA_MATH_ROTATION_H_
+#define THEIA_MATH_ROTATION_H_
+
 #include <Eigen/Core>
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-#include <theia/theia.h>
 
-#include <algorithm>
-#include <string>
+namespace theia {
 
-DEFINE_string(lists_file, "", "Input bundle lists file.");
-DEFINE_string(bundle_file, "", "Input bundle file.");
-DEFINE_string(output_reconstruction_file, "",
-              "Output reconstruction file in binary format.");
-DEFINE_string(images_directory, "",
-              "Directory of input images. This is used to extract the "
-              "principal point and image dimensions since Bundler does not "
-              "provide those.");
-int main(int argc, char* argv[]) {
-  google::InitGoogleLogging(argv[0]);
-  THEIA_GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+// Multiply two angle-axis rotations without having to form the rotation
+// matrices. Given the corresponding rotation matrices R1 and R2, this method
+// computes: R3 = R1 * R2.
+Eigen::Vector3d MultiplyRotations(const Eigen::Vector3d& rotation1,
+                                  const Eigen::Vector3d& rotation2);
+}  // namespace theia
 
-  // Load the reconstuction.
-  theia::Reconstruction reconstruction;
-  CHECK(theia::ReadBundlerFiles(FLAGS_lists_file,
-                                FLAGS_bundle_file,
-                                &reconstruction))
-      << "Could not read Bundler files.";
-  if (FLAGS_images_directory.size() > 0) {
-    CHECK(theia::PopulateImageSizesAndPrincipalPoints(FLAGS_images_directory,
-                                                      &reconstruction));
-  } else {
-    LOG(INFO) << "The image directory was not provided so the principal point "
-                 "and image dimensions are assumed to be zero. Proceed with "
-                 "caution!";
-  }
-
-  CHECK(WriteReconstruction(reconstruction, FLAGS_output_reconstruction_file))
-      << "Could not write out reconstruction file.";
-  return 0;
-}
+#endif  // THEIA_MATH_ROTATION_H_

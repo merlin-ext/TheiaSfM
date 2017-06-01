@@ -58,6 +58,8 @@ namespace {
 // Machine precision constants.
 static const double mult_eps = std::numeric_limits<double>::epsilon();
 static const double sum_eps = std::numeric_limits<double>::epsilon();
+static const double kAbsoluteTolerance = 1e-14;
+static const double kRelativeTolerance = 1e-10;
 
 enum class ConvergenceType {
   NO_CONVERGENCE = 0,
@@ -138,8 +140,6 @@ bool HasConverged(const T& sequence) {
 template <typename T>
 bool HasRootConverged(const std::vector<T>& roots) {
   static const double kRootMagnitudeTolerance = 1e-8;
-  static const double kAbsoluteTolerance = 1e-14;
-  static const double kRelativeTolerance = 1e-10;
 
   if (roots.size() != 3) {
     return false;
@@ -314,7 +314,7 @@ bool JenkinsTraubSolver::ExtractRoots() {
   // Remove any leading zeros of the polynomial.
   polynomial_ = RemoveLeadingZeros(polynomial_);
 
-  const int degree = polynomial_.size() - 1;
+  const int degree = static_cast<int>(polynomial_.size()) - 1;
 
   // Allocate the output roots.
   if (real_roots_ != NULL) {
@@ -604,7 +604,7 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
 
     // If the root is exactly the root then end early. Otherwise, the k
     // polynomial will be filled with inf or nans.
-    if (polynomial_at_root == 0) {
+    if (std::abs(polynomial_at_root) <= kAbsoluteTolerance) {
       AddRootToOutput(roots[0], 0);
       polynomial_ = deflated_polynomial;
       return true;
@@ -701,7 +701,7 @@ void JenkinsTraubSolver::RemoveZeroRoots() {
 }
 
 bool JenkinsTraubSolver::SolveClosedFormPolynomial() {
-  const int degree = polynomial_.size() - 1;
+  const int degree = static_cast<int>(polynomial_.size()) - 1;
 
   // Is the polynomial constant?
   if (degree == 0) {

@@ -45,6 +45,7 @@ set(THEIA_SRC
   image/image_cache.cc
   image/keypoint_detector/sift_detector.cc
   io/import_nvm_file.cc
+  io/populate_image_sizes.cc
   io/read_1dsfm.cc
   io/read_bundler_files.cc
   io/read_calibration.cc
@@ -72,6 +73,7 @@ set(THEIA_SRC
   math/matrix/sparse_cholesky_llt.cc
   math/polynomial.cc
   math/probability/sequential_probability_ratio.cc
+  math/rotation.cc
   math/qp_solver.cc
   sfm/bundle_adjustment/bundle_adjust_two_views.cc
   sfm/bundle_adjustment/bundle_adjustment.cc
@@ -142,7 +144,9 @@ set(THEIA_SRC
   sfm/reconstruction_builder.cc
   sfm/reconstruction_estimator.cc
   sfm/reconstruction_estimator_utils.cc
+  sfm/select_good_tracks_for_bundle_adjustment.cc
   sfm/set_camera_intrinsics_from_priors.cc
+  sfm/set_outlier_tracks_to_unestimated.cc
   sfm/track.cc
   sfm/track_builder.cc
   sfm/transformation/align_point_clouds.cc
@@ -232,6 +236,7 @@ if (BUILD_TESTING)
   gtest(math/polynomial)
   gtest(math/probability/sprt)
   gtest(math/qp_solver)
+  gtest(math/rotation)
   gtest(sfm/bundle_adjustment/optimize_relative_position_with_known_rotation)
   gtest(sfm/camera/camera)
   gtest(sfm/camera/fisheye_camera_model)

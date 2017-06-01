@@ -40,8 +40,12 @@
 #include <unordered_set>
 
 #include "theia/sfm/bundle_adjustment/bundle_adjustment.h"
+#include "theia/sfm/reconstruction.h"
+#include "theia/sfm/track.h"
 #include "theia/sfm/types.h"
+#include "theia/sfm/view.h"
 #include "theia/solvers/sample_consensus_estimator.h"
+#include "theia/util/map_util.h"
 
 namespace theia {
 class Reconstruction;
@@ -84,11 +88,11 @@ void CreateEstimatedSubreconstruction(
 
 // Outputs the ViewId of all estimated views in the reconstruction.
 void GetEstimatedViewsFromReconstruction(const Reconstruction& reconstruction,
-                                std::unordered_set<ViewId>* views);
+                                         std::unordered_set<ViewId>* views);
 
 // Outputs the TrackId of all estimated tracks in the reconstruction.
 void GetEstimatedTracksFromReconstruction(const Reconstruction& reconstruction,
-                                 std::unordered_set<TrackId>* tracks);
+                                          std::unordered_set<TrackId>* tracks);
 
 // Refine the relative translation estimates between view pairs by optimizing
 // the epipolar constraint given the known rotation estimation.
@@ -97,19 +101,6 @@ void RefineRelativeTranslationsWithKnownRotations(
     const std::unordered_map<ViewId, Eigen::Vector3d>& orientations,
     const int num_threads,
     ViewGraph* view_graph);
-
-// Removes features that have a reprojection error larger than the
-// reprojection error threshold. Additionally, any features that are poorly
-// constrained because of a small viewing angle are removed. Returns the number
-// of features removed. Only the input tracks are checked.
-int RemoveOutlierFeatures(const std::unordered_set<TrackId>& tracks,
-                          const double max_inlier_reprojection_error,
-                          const double min_triangulation_angle_degrees,
-                          Reconstruction* reconstruction);
-// Same as above, but checks all tracks.
-int RemoveOutlierFeatures(const double max_inlier_reprojection_error,
-                          const double min_triangulation_angle_degrees,
-                          Reconstruction* reconstruction);
 
 // Sets all tracks that are not seen by enough estimated views to unestimated.
 // Returns the number of tracks set to unestimated.
@@ -122,6 +113,38 @@ int SetUnderconstrainedViewsToUnestimated(Reconstruction* reconstruction);
 // Return the number of estimated views or tracks in the reconstruction.
 int NumEstimatedViews(const Reconstruction& reconstruction);
 int NumEstimatedTracks(const Reconstruction& reconstruction);
+
+// A convenience method for setting a selection of tracks in the specified views
+// to be unestimated. The specified set of input tracks will remain as
+// "estimated", but all others will be set to unestimated.
+template <typename Container>
+void SetTracksInViewsToUnestimated(
+    const Container& views,
+    const std::unordered_set<TrackId>& tracks_to_stay_estimated,
+    Reconstruction* reconstruction) {
+  // For each estimated view in the provided view list, set the tracks in the
+  // view to be unestimated.
+  for (const ViewId view_id : views) {
+    const View* view = reconstruction->View(view_id);
+    if (view == nullptr || !view->IsEstimated()) {
+      continue;
+    }
+
+    // Set all tracks in the view to unestimated, unless they are part of the
+    // subset that remains estimated.
+    const auto& tracks_in_view = view->TrackIds();
+    for (const TrackId track_id : tracks_in_view) {
+      Track* track = reconstruction->MutableTrack(track_id);
+      // Skip this track if it is invalid or it was requested to stay
+      // estimated. This assumes that tracks that "stay" estimated are already
+      // set to be estimated.
+      if (track == nullptr || ContainsKey(tracks_to_stay_estimated, track_id)) {
+        continue;
+      }
+      track->SetEstimated(false);
+    }
+  }
+}
 
 }  // namespace theia
 

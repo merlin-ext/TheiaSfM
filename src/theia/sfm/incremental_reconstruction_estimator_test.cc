@@ -46,8 +46,11 @@
 #include "theia/sfm/reconstruction_estimator_utils.h"
 #include "theia/sfm/transformation/align_reconstructions.h"
 #include "theia/sfm/view_graph/view_graph.h"
+#include "theia/util/random.h"
 
 namespace theia {
+RandomNumberGenerator rng(52);
+
 void ReadInput(Reconstruction* gt_reconstruction,
                Reconstruction* reconstruction,
                ViewGraph* view_graph) {
@@ -79,16 +82,19 @@ void ReadInput(Reconstruction* gt_reconstruction,
   std::vector<ImagePairMatch> image_matches;
 
   // Read in match file.
-  ReadMatchesAndGeometry(matches_filename,
-                         &image_files,
-                         &camera_intrinsics_prior,
-                         &image_matches);
+  CHECK(ReadMatchesAndGeometry(matches_filename,
+                               &image_files,
+                               &camera_intrinsics_prior,
+                               &image_matches));
 
   // Add the matches to the view graph.
   for (const ImagePairMatch& match : image_matches) {
     TwoViewInfo info = match.twoview_info;
     const ViewId view_id1 = reconstruction->ViewIdFromName(match.image1);
     const ViewId view_id2 = reconstruction->ViewIdFromName(match.image2);
+    if (view_id1 == kInvalidViewId || view_id2 == kInvalidViewId) {
+      continue;
+    }
     if (view_id1 > view_id2) {
       SwapCameras(&info);
     }
@@ -156,6 +162,7 @@ TEST(IncrementalReconstructionEstimator, BasicTest) {
   static const double kPositionToleranceMeters = 1e-2;
 
   ReconstructionEstimatorOptions options;
+  options.rng = std::make_shared<RandomNumberGenerator>(rng);
   options.reconstruction_estimator_type =
       ReconstructionEstimatorType::INCREMENTAL;
   options.intrinsics_to_optimize = OptimizeIntrinsicsType::NONE;
@@ -166,6 +173,7 @@ TEST(IncrementalReconstructionEstimator, RobustCostFunction) {
   static const double kPositionToleranceMeters = 1e-2;
 
   ReconstructionEstimatorOptions options;
+  options.rng = std::make_shared<RandomNumberGenerator>(rng);
   options.reconstruction_estimator_type =
       ReconstructionEstimatorType::INCREMENTAL;
   options.bundle_adjustment_loss_function_type = LossFunctionType::HUBER;
@@ -177,9 +185,22 @@ TEST(IncrementalReconstructionEstimator, VariableIntrinsics) {
   static const double kPositionToleranceMeters = 1e-2;
 
   ReconstructionEstimatorOptions options;
+  options.rng = std::make_shared<RandomNumberGenerator>(rng);
   options.reconstruction_estimator_type =
       ReconstructionEstimatorType::INCREMENTAL;
   options.intrinsics_to_optimize = OptimizeIntrinsicsType::FOCAL_LENGTH;
+  BuildAndVerifyReconstruction(kPositionToleranceMeters, options);
+}
+
+TEST(IncrementalReconstructionEstimator, TrackSubsetSelection) {
+  static const double kPositionToleranceMeters = 1e-2;
+
+  ReconstructionEstimatorOptions options;
+  options.rng = std::make_shared<RandomNumberGenerator>(rng);
+  options.reconstruction_estimator_type =
+      ReconstructionEstimatorType::INCREMENTAL;
+  options.subsample_tracks_for_bundle_adjustment = true;
+  options.intrinsics_to_optimize = OptimizeIntrinsicsType::NONE;
   BuildAndVerifyReconstruction(kPositionToleranceMeters, options);
 }
 
@@ -187,6 +208,7 @@ TEST(IncrementalReconstructionEstimator, InitializedReconstruction) {
   static const double kPositionToleranceMeters = 1e-2;
 
   ReconstructionEstimatorOptions options;
+  options.rng = std::make_shared<RandomNumberGenerator>(rng);
   options.reconstruction_estimator_type =
       ReconstructionEstimatorType::INCREMENTAL;
   options.intrinsics_to_optimize = OptimizeIntrinsicsType::NONE;

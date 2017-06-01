@@ -54,7 +54,9 @@
 #include "theia/sfm/reconstruction.h"
 #include "theia/sfm/reconstruction_estimator_options.h"
 #include "theia/sfm/reconstruction_estimator_utils.h"
+#include "theia/sfm/select_good_tracks_for_bundle_adjustment.h"
 #include "theia/sfm/set_camera_intrinsics_from_priors.h"
+#include "theia/sfm/set_outlier_tracks_to_unestimated.h"
 #include "theia/sfm/twoview_info.h"
 #include "theia/sfm/view_graph/orientations_from_maximum_spanning_tree.h"
 #include "theia/sfm/view_graph/remove_disconnected_view_pairs.h"
@@ -254,7 +256,7 @@ ReconstructionEstimatorSummary GlobalReconstructionEstimator::Estimate(
     }
     summary.bundle_adjustment_time += timer.ElapsedTimeInSeconds();
 
-    int num_points_removed = RemoveOutlierFeatures(
+    int num_points_removed = SetOutlierTracksToUnestimated(
         options_.max_reprojection_error_in_pixels,
         options_.min_triangulation_angle_degrees,
         reconstruction_);
@@ -340,7 +342,7 @@ bool GlobalReconstructionEstimator::EstimateGlobalRotations() {
     case GlobalRotationEstimatorType::LINEAR: {
       // Set the constructor variable to true to weigh each term by the inlier
       // count.
-      rotation_estimator.reset(new LinearRotationEstimator(false));
+      rotation_estimator.reset(new LinearRotationEstimator());
       break;
     }
     default: {
@@ -453,8 +455,39 @@ bool GlobalReconstructionEstimator::BundleAdjustment() {
   // Bundle adjustment.
   bundle_adjustment_options_ =
       SetBundleAdjustmentOptions(options_, positions_.size());
+
+  // If desired, select good tracks to optimize for BA. This dramatically
+  // reduces the number of parameters in bundle adjustment, and does a decent
+  // job of filtering tracks with outliers that may slow down the nonlinear
+  // optimization.
+  std::unordered_set<TrackId> tracks_to_optimize;
+  if (options_.subsample_tracks_for_bundle_adjustment &&
+      SelectGoodTracksForBundleAdjustment(
+          *reconstruction_,
+          options_.track_subset_selection_long_track_length_threshold,
+          options_.track_selection_image_grid_cell_size_pixels,
+          options_.min_num_optimized_tracks_per_view,
+          &tracks_to_optimize)) {
+    // Set all tracks that were not chosen for BA to be unestimated so that they
+    // do not affect the bundle adjustment optimization.
+    const auto& view_ids = reconstruction_->ViewIds();
+    SetTracksInViewsToUnestimated(view_ids,
+                                  tracks_to_optimize,
+                                  reconstruction_);
+  } else {
+    GetEstimatedTracksFromReconstruction(*reconstruction_, &tracks_to_optimize);
+  }
+  LOG(INFO) << "Selected " << tracks_to_optimize.size()
+            << " tracks to optimize.";
+
+  std::unordered_set<ViewId> views_to_optimize;
+  GetEstimatedViewsFromReconstruction(*reconstruction_,
+                                      &views_to_optimize);
   const auto& bundle_adjustment_summary =
-      BundleAdjustReconstruction(bundle_adjustment_options_, reconstruction_);
+      BundleAdjustPartialReconstruction(bundle_adjustment_options_,
+                                        views_to_optimize,
+                                        tracks_to_optimize,
+                                        reconstruction_);
   return bundle_adjustment_summary.success;
 }
 
@@ -465,8 +498,31 @@ bool GlobalReconstructionEstimator::BundleAdjustCameraPositionsAndPoints() {
   bundle_adjustment_options_.constant_camera_position = false;
   bundle_adjustment_options_.intrinsics_to_optimize =
       OptimizeIntrinsicsType::NONE;
+  std::unordered_set<TrackId> tracks_to_optimize;
+  // If desired, select good tracks to optimize for BA. This dramatically
+  // reduces the number of parameters in bundle adjustment, and does a decent
+  // job of filtering tracks with outliers that may slow down the nonlinear
+  // optimization.
+  if (!options_.subsample_tracks_for_bundle_adjustment ||
+      !SelectGoodTracksForBundleAdjustment(
+          *reconstruction_,
+          options_.track_subset_selection_long_track_length_threshold,
+          options_.track_selection_image_grid_cell_size_pixels,
+          options_.min_num_optimized_tracks_per_view,
+          &tracks_to_optimize)) {
+    GetEstimatedTracksFromReconstruction(*reconstruction_, &tracks_to_optimize);
+  }
+  LOG(INFO) << "Selected " << tracks_to_optimize.size()
+            << " tracks to optimize.";
+
+  std::unordered_set<ViewId> views_to_optimize;
+  GetEstimatedViewsFromReconstruction(*reconstruction_,
+                                      &views_to_optimize);
   const auto& bundle_adjustment_summary =
-      BundleAdjustReconstruction(bundle_adjustment_options_, reconstruction_);
+      BundleAdjustPartialReconstruction(bundle_adjustment_options_,
+                                        views_to_optimize,
+                                        tracks_to_optimize,
+                                        reconstruction_);
   return bundle_adjustment_summary.success;
 }
 

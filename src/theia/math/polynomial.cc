@@ -75,7 +75,7 @@
 #include <cmath>
 #include <limits>
 
-#include "theia/math/find_polynomial_roots_jenkins_traub.h"
+#include "theia/math/find_polynomial_roots_companion_matrix.h"
 
 namespace theia {
 
@@ -86,7 +86,7 @@ using Eigen::VectorXcd;
 bool FindPolynomialRoots(const VectorXd& polynomial,
                          VectorXd* real,
                          VectorXd* imaginary) {
-  return FindPolynomialRootsJenkinsTraub(polynomial, real, imaginary);
+  return FindPolynomialRootsCompanionMatrix(polynomial, real, imaginary);
 }
 
 // Remove leading terms with zero coefficients.
@@ -99,7 +99,7 @@ VectorXd RemoveLeadingZeros(const VectorXd& polynomial_in) {
 }
 
 VectorXd DifferentiatePolynomial(const VectorXd& polynomial) {
-  const int degree = polynomial.rows() - 1;
+  const int degree = static_cast<int>(polynomial.rows()) - 1;
   CHECK_GE(degree, 0);
 
   // Degree zero polynomials are constants, and their derivative does

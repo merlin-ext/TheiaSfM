@@ -1,4 +1,4 @@
-// Copyright (C) 2014 The Regents of the University of California (Regents).
+// Copyright (C) 2017 The Regents of the University of California (Regents).
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -31,33 +31,58 @@
 //
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
+// Author: Aleksander Holynski (holynski@cs.washington.edu)
 
-#include <ceres/rotation.h>
-#include <Eigen/Core>
+#include "theia/io/populate_image_sizes.h"
+
 #include <glog/logging.h>
-#include <algorithm>
 
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>   // NOLINT
+#include <iostream>  // NOLINT
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "theia/image/image.h"
 #include "theia/sfm/camera/camera.h"
-#include "theia/sfm/twoview_info.h"
+#include "theia/sfm/reconstruction.h"
+#include "theia/sfm/types.h"
+#include "theia/sfm/view.h"
+#include "theia/util/filesystem.h"
+#include "theia/util/string.h"
 
 namespace theia {
 
-void SwapCameras(TwoViewInfo* twoview_info) {
-  CHECK_NE(twoview_info->focal_length_1, 0.0);
-  CHECK_NE(twoview_info->focal_length_2, 0.0);
+// Loads all images from the defined directory, and sets each of the
+// recontruction's cameras to have an image size corresponding to the found
+// image and a principal point at the center of that image.
+bool PopulateImageSizesAndPrincipalPoints(const std::string& image_directory,
+                                          Reconstruction* reconstruction) {
+  CHECK_NOTNULL(reconstruction);
+  std::string directory_with_slash = image_directory;
+  AppendTrailingSlashIfNeeded(&directory_with_slash);
+  const std::vector<ViewId> view_ids = reconstruction->ViewIds();
+  for (int i = 0; i < view_ids.size(); i++) {
+    const std::string file =
+        directory_with_slash + reconstruction->View(view_ids[i])->Name();
+    if (!FileExists(file)) {
+      LOG(ERROR) << "Could not find " << file;
+      return false;
+    }
+  }
+  for (int i = 0; i < view_ids.size(); i++) {
+    const std::string file =
+        directory_with_slash + reconstruction->View(view_ids[i])->Name();
+    const FloatImage image(file);
+    CHECK_GT(image.Cols(), 0);
+    Camera* camera = reconstruction->MutableView(view_ids[i])->MutableCamera();
+    camera->SetImageSize(image.Cols(), image.Rows());
+    camera->SetPrincipalPoint(image.Cols() / 2.0, image.Rows() / 2.0);
+  }
 
-  // Swap the focal lengths.
-  std::swap(twoview_info->focal_length_1, twoview_info->focal_length_2);
-
-  // Invert the translation.
-  Eigen::Matrix3d rotation_mat;
-  ceres::AngleAxisToRotationMatrix(
-      twoview_info->rotation_2.data(),
-      ceres::ColumnMajorAdapter3x3(rotation_mat.data()));
-  twoview_info->position_2 = -rotation_mat * twoview_info->position_2;
-
-  // Invert the rotation.
-  twoview_info->rotation_2 *= -1.0;
+  return true;
 }
 
 }  // namespace theia

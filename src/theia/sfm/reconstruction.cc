@@ -110,9 +110,26 @@ ViewId Reconstruction::AddView(const std::string& view_name,
   }
 
   class View new_view(view_name);
+
+  // If the camera intrinsics group already exists, set the internal intrinsics
+  // of each camera to point to the same underlying intrinsics.
+  if (camera_intrinsics_groups_[group_id].size() > 0) {
+    const ViewId view_id_in_intrinsics_group =
+        *camera_intrinsics_groups_[group_id].begin();
+    const Camera& intrinsics_group_camera =
+        FindOrDie(views_, view_id_in_intrinsics_group).Camera();
+
+    // Set the shared_ptr objects to point to the same place so that the
+    // intrinsics are truly shared.
+    new_view.MutableCamera()->MutableCameraIntrinsics() =
+        intrinsics_group_camera.CameraIntrinsics();
+  }
+
+  // Add the view to the reconstruction.
   views_.emplace(next_view_id_, new_view);
   view_name_to_id_.emplace(view_name, next_view_id_);
 
+  // Add this view to the camera intrinsics group, and vice versa.
   view_id_to_camera_intrinsics_group_id_.emplace(next_view_id_, group_id);
   camera_intrinsics_groups_[group_id].emplace(next_view_id_);
 
@@ -219,6 +236,50 @@ Reconstruction::CameraIntrinsicsGroupIds() const {
 
 int Reconstruction::NumCameraIntrinsicGroups() const {
   return camera_intrinsics_groups_.size();
+}
+
+TrackId Reconstruction::AddTrack() {
+  const TrackId new_track_id = next_track_id_;
+  CHECK(!ContainsKey(tracks_, new_track_id))
+      << "The reconstruction already contains a track with id: "
+      << new_track_id;
+
+  class Track new_track;
+  tracks_.emplace(new_track_id, new_track);
+  ++next_track_id_;
+  return new_track_id;
+}
+
+bool Reconstruction::AddObservation(const ViewId view_id,
+                                    const TrackId track_id,
+                                    const Feature& feature) {
+  CHECK(ContainsKey(views_, view_id))
+      << "View does not exist. AddObservation may only be used to add "
+         "observations to an existing view.";
+  CHECK(ContainsKey(tracks_, track_id))
+      << "Track does not exist. AddObservation may only be used to add "
+         "observations to an existing track.";
+
+  class View* view = FindOrNull(views_, view_id);
+  class Track* track = FindOrNull(tracks_, track_id);
+  if (view->GetFeature(track_id) != nullptr) {
+    LOG(WARNING)
+        << "Cannot add a new observation of track " << track_id
+        << " because the view already contains an observation of the track.";
+    return false;
+  }
+
+  const std::unordered_set<ViewId>& views_observing_track = track->ViewIds();
+  if (ContainsKey(views_observing_track, view_id)) {
+    LOG(WARNING)
+        << "Cannot add a new observation of track " << track_id
+        << " because the track is already observed by view " << view_id;
+    return false;
+  }
+
+  view->AddFeature(track_id, feature);
+  track->AddView(view_id);
+  return true;
 }
 
 TrackId Reconstruction::AddTrack(

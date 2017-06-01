@@ -1,4 +1,4 @@
-// Copyright (C) 2014 The Regents of the University of California (Regents).
+// Copyright (C) 2017 The Regents of the University of California (Regents).
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -31,43 +31,34 @@
 //
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
+// Author: Aleksander Holynski (holynski@cs.washington.edu)
 
-#include <Eigen/Core>
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-#include <theia/theia.h>
+#ifndef THEIA_IO_POPULATE_IMAGE_SIZES_H_
+#define THEIA_IO_POPULATE_IMAGE_SIZES_H_
 
-#include <algorithm>
 #include <string>
 
-DEFINE_string(lists_file, "", "Input bundle lists file.");
-DEFINE_string(bundle_file, "", "Input bundle file.");
-DEFINE_string(output_reconstruction_file, "",
-              "Output reconstruction file in binary format.");
-DEFINE_string(images_directory, "",
-              "Directory of input images. This is used to extract the "
-              "principal point and image dimensions since Bundler does not "
-              "provide those.");
-int main(int argc, char* argv[]) {
-  google::InitGoogleLogging(argv[0]);
-  THEIA_GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+namespace theia {
 
-  // Load the reconstuction.
-  theia::Reconstruction reconstruction;
-  CHECK(theia::ReadBundlerFiles(FLAGS_lists_file,
-                                FLAGS_bundle_file,
-                                &reconstruction))
-      << "Could not read Bundler files.";
-  if (FLAGS_images_directory.size() > 0) {
-    CHECK(theia::PopulateImageSizesAndPrincipalPoints(FLAGS_images_directory,
-                                                      &reconstruction));
-  } else {
-    LOG(INFO) << "The image directory was not provided so the principal point "
-                 "and image dimensions are assumed to be zero. Proceed with "
-                 "caution!";
-  }
+class Reconstruction;
 
-  CHECK(WriteReconstruction(reconstruction, FLAGS_output_reconstruction_file))
-      << "Could not write out reconstruction file.";
-  return 0;
-}
+// Bundler files & image lists don't usually contain image sizes. This function
+// loads the images with names defined in the reconstruction from the
+// 'image_directory' folder. If any of the files defined in the reconstruction
+// do not exist, the function will return false (and no values will be changed
+// in the reconstruction), otherwise the function will return true. This
+// function is to be called after ReadBundlerFiles(). Assumes principal points
+// to be at the image center.
+//
+// Input params are as follows:
+//   image_directory: The directory containing all the image files from the
+//   reconstruction.
+//   reconstruction: A Theia Reconstruction containing the camera, track, and
+//       point cloud information. See theia/sfm/reconstruction.h for more
+//       information.
+bool PopulateImageSizesAndPrincipalPoints(const std::string& image_directory,
+                                          Reconstruction* reconstruction);
+
+}  // namespace theia
+
+#endif  // THEIA_IO_IMPORT_IMAGE_SIZES_H_
