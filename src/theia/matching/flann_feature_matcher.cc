@@ -48,7 +48,7 @@ bool FlannFeatureMatcher::MatchImagePair(
     // turned on and passes the test.
     if (!this->options_.use_lowes_ratio ||
         nn_distances[i][0] < sq_lowes_ratio * nn_distances[i][1]) {
-      matches->emplace_back(nn_indices[i][0], i, nn_distances[i][0]);
+      matches->emplace_back(IndexedFeatureMatch(nn_indices[i][0], i, nn_distances[i][0]));
     }
   }
 
@@ -72,7 +72,7 @@ bool FlannFeatureMatcher::MatchImagePair(
       // turned on and passes the test.
       if (!this->options_.use_lowes_ratio ||
           nn_distances[i][0] < sq_lowes_ratio * nn_distances[i][1]) {
-        reverse_matches.emplace_back(i, nn_indices[i][0], nn_distances[i][0]);
+        reverse_matches.emplace_back(IndexedFeatureMatch(i, nn_indices[i][0], nn_distances[i][0]));
       }
     }
 
