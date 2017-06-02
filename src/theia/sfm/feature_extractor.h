@@ -96,8 +96,8 @@ class FeatureExtractor {
 
   // Extracts the features from a FloatImage
   bool ExtractFeaturesFromImage(const FloatImage& image,
-                       std::vector<Keypoint>* keypoints,
-                       std::vector<Eigen::VectorXf>* descriptors);
+                                std::vector<Keypoint>* keypoints,
+                                std::vector<Eigen::VectorXf>* descriptors);
 
   const Options options_;
   bool write_features_to_disk_;

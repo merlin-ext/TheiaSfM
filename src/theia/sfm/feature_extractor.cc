@@ -130,8 +130,7 @@ bool FeatureExtractor::ExtractFeatures(
   if (!ExtractFeaturesFromImage(*image, keypoints, descriptors)) {
     LOG(ERROR) << "Could not extract descriptors in image " << filename;
     return false;
-  }
-  else {
+  } else {
     VLOG(1) << "Successfully extracted " << descriptors->size()
             << " features from image " << filename;
   }
@@ -150,8 +149,8 @@ bool FeatureExtractor::ExtractFeatures(
 
     // Write the features to disk.
     CHECK(WriteKeypointsAndDescriptors(features_file, *keypoints, *descriptors))
-    << "Could not write features for image " << image_filename
-    << " from file " << features_file;
+      << "Could not write features for image " << image_filename
+      << " from file " << features_file;
 
     // Remove the features from memory.
     keypoints->clear();
