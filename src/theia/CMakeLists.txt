@@ -67,6 +67,7 @@ set(THEIA_SRC
   matching/feature_matcher.cc
   matching/feature_matcher_utils.cc
   matching/guided_epipolar_matcher.cc
+  matching/flann_feature_matcher.cc
   math/closed_form_polynomial_solver.cc
   math/find_polynomial_roots_companion_matrix.cc
   math/find_polynomial_roots_jenkins_traub.cc
@@ -220,6 +221,7 @@ if (BUILD_TESTING)
   gtest(image/keypoint_detector/sift_detector)
   gtest(matching/brute_force_feature_matcher)
   gtest(matching/cascade_hashing_feature_matcher)
+  gtest(matching/flann_feature_matcher)
   gtest(matching/distance)
   gtest(matching/feature_correspondence)
   gtest(matching/feature_matcher_utils)

@@ -39,6 +39,7 @@
 
 #include "theia/matching/brute_force_feature_matcher.h"
 #include "theia/matching/cascade_hashing_feature_matcher.h"
+#include "theia/matching/flann_feature_matcher.h"
 #include "theia/matching/distance.h"
 #include "theia/matching/feature_matcher.h"
 
@@ -52,6 +53,8 @@ std::unique_ptr<FeatureMatcher> CreateFeatureMatcher(
     matcher.reset(new CascadeHashingFeatureMatcher(options));
   } else if (matching_strategy == MatchingStrategy::BRUTE_FORCE) {
     matcher.reset(new BruteForceFeatureMatcher(options));
+  } else if (matching_strategy == MatchingStrategy::FLANN) {
+    matcher.reset(new FlannFeatureMatcher(options));
   } else {
     LOG(FATAL) << "Invalid matching strategy specified.";
   }

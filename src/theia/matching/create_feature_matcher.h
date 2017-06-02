@@ -45,6 +45,7 @@ struct FeatureMatcherOptions;
 enum class MatchingStrategy {
   BRUTE_FORCE = 0,
   CASCADE_HASHING = 1,
+  FLANN = 2,
 };
 
 // A factory method for creating an L2-based feature matcher (i.e. for float
