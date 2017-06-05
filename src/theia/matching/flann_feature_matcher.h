@@ -35,11 +35,6 @@ class FlannFeatureMatcher : public FeatureMatcher {
                 const std::vector<Keypoint>& keypoints,
                 const std::vector<Eigen::VectorXf>& descriptors) override;
 
-  void AddImage(const std::string& image,
-                const std::vector<Keypoint>& keypoints,
-                const std::vector<Eigen::VectorXf>& descriptors,
-                const CameraIntrinsicsPrior& intrinsics) override;
-
  private:
   bool MatchImagePair(const KeypointsAndDescriptors& features1,
                       const KeypointsAndDescriptors& features2,

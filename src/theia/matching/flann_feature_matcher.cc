@@ -20,7 +20,7 @@ bool FlannFeatureMatcher::MatchImagePair(
         std::vector<IndexedFeatureMatch> *matches)
 {
   static const int kNumNearestNeighbors = 2;
-  static const int kMinNumLeafsVisited = 50;
+  static const int kMinNumLeafsVisited = 32;
   const flann::Matrix<float>& descriptors1 = image_descriptors_[features1.image_name];
   const flann::Matrix<float>& descriptors2 = image_descriptors_[features2.image_name];
   matches->reserve(descriptors1.rows);
@@ -35,12 +35,10 @@ bool FlannFeatureMatcher::MatchImagePair(
   // Query the KD-tree to get the top 2 nearest neighbors.
   std::vector<std::vector<float> > nn_distances;
   std::vector<std::vector<int> > nn_indices;
-  const int max_leafs_to_check =
-    std::max(static_cast<int>(descriptors1.rows * 0.2), kMinNumLeafsVisited);
   const flann::Index<flann::L2<float>>& index1 = indexed_images_.at(features1.image_name);
   index1.knnSearch(descriptors2, nn_indices, nn_distances,
                                                   kNumNearestNeighbors,
-                                                  flann::SearchParams(max_leafs_to_check));
+                                                  flann::SearchParams(kMinNumLeafsVisited));
 
   // Output the matches
   for (int i = 0; i < descriptors2.rows; i++) {
@@ -64,7 +62,7 @@ bool FlannFeatureMatcher::MatchImagePair(
     const flann::Index<flann::L2<float>>& index2 = indexed_images_.at(features2.image_name);
     index2.knnSearch(descriptors1, nn_indices, nn_distances,
                                                     kNumNearestNeighbors,
-                                                    flann::SearchParams(max_leafs_to_check));
+                                                    flann::SearchParams(kMinNumLeafsVisited));
 
     // Output the matches
     for (int i = 0; i < descriptors1.rows; i++) {
@@ -109,41 +107,6 @@ void FlannFeatureMatcher::AddImage(
     // Create the searchable KD-tree with FLANN.
     flann::Index<flann::L2<float> > flann_kd_tree(
         flann_candidate_descriptors, flann::KDTreeSingleIndexParams());
-        flann_kd_tree.buildIndex();
-    indexed_images_.emplace(image, flann_kd_tree);
-
-    VLOG(1) << "Created the kd-tree index for image: " << image;
-  }
-}
-
-void FlannFeatureMatcher::AddImage(
-    const std::string& image,
-    const std::vector<Keypoint>& keypoints,
-    const std::vector<Eigen::VectorXf>& descriptors,
-    const CameraIntrinsicsPrior& intrinsics)
-{
-  // This will save the descriptors and keypoints to disk and set up our LRU
-  // cache.
-  FeatureMatcher::AddImage(image, keypoints, descriptors, intrinsics);
-
-  // Create the kd-tree.
-  if (!ContainsKey(indexed_images_, image)) {
-    // Gather the descriptors.
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    candidate_descriptors(descriptors.size(),
-                          descriptors.front().size());
-    for (int i = 0; i < descriptors.size(); i++)
-      candidate_descriptors.row(i) = descriptors[i];
-
-    // Create the descriptor table
-    flann::Matrix<float> flann_candidate_descriptors(
-    candidate_descriptors.data(), candidate_descriptors.rows(),
-    candidate_descriptors.cols());
-    image_descriptors_.emplace(image, flann_candidate_descriptors);
-
-    // Create the searchable KD-tree with FLANN.
-    flann::Index<flann::L2<float> > flann_kd_tree(
-    flann_candidate_descriptors, flann::KDTreeSingleIndexParams());
     flann_kd_tree.buildIndex();
     indexed_images_.emplace(image, flann_kd_tree);
 
