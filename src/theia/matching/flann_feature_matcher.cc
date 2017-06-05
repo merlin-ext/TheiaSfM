@@ -20,7 +20,6 @@ bool FlannFeatureMatcher::MatchImagePair(
         std::vector<IndexedFeatureMatch> *matches)
 {
   static const int kNumNearestNeighbors = 2;
-  static const int kMinNumLeafsVisited = 32;
   const flann::Matrix<float>& descriptors1 = image_descriptors_[features1.image_name];
   const flann::Matrix<float>& descriptors2 = image_descriptors_[features2.image_name];
   matches->reserve(descriptors1.rows);
@@ -35,10 +34,10 @@ bool FlannFeatureMatcher::MatchImagePair(
   // Query the KD-tree to get the top 2 nearest neighbors.
   std::vector<std::vector<float> > nn_distances;
   std::vector<std::vector<int> > nn_indices;
-  const flann::Index<flann::L2<float>>& index1 = indexed_images_.at(features1.image_name);
-  index1.knnSearch(descriptors2, nn_indices, nn_distances,
-                                                  kNumNearestNeighbors,
-                                                  flann::SearchParams(kMinNumLeafsVisited));
+  flann::Index<flann::L2<float> > index1(descriptors1, flann::KDTreeSingleIndexParams());
+  index1.buildIndex();
+  //const flann::Index<flann::L2<float>>& index1 = indexed_images_.at(features1.image_name);
+  index1.knnSearch(descriptors2, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
 
   // Output the matches
   for (int i = 0; i < descriptors2.rows; i++) {
@@ -59,10 +58,10 @@ bool FlannFeatureMatcher::MatchImagePair(
     std::vector<IndexedFeatureMatch> reverse_matches(descriptors1.rows);
     nn_distances.clear();
     nn_indices.clear();
-    const flann::Index<flann::L2<float>>& index2 = indexed_images_.at(features2.image_name);
-    index2.knnSearch(descriptors1, nn_indices, nn_distances,
-                                                    kNumNearestNeighbors,
-                                                    flann::SearchParams(kMinNumLeafsVisited));
+    flann::Index<flann::L2<float> > index2(descriptors2, flann::KDTreeSingleIndexParams());
+    index2.buildIndex();
+    //const flann::Index<flann::L2<float>>& index2 = indexed_images_.at(features2.image_name);
+    index2.knnSearch(descriptors1, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
 
     // Output the matches
     for (int i = 0; i < descriptors1.rows; i++) {
