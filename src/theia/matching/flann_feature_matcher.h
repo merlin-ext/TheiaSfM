@@ -12,7 +12,7 @@
 
 #include "theia/matching/feature_matcher.h"
 #include "theia/util/util.h"
-#include "flann/flann.h"
+#include "flann/flann.hpp"
 
 namespace theia {
     class Keypoint;

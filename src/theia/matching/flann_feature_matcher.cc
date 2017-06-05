@@ -28,7 +28,6 @@ bool FlannFeatureMatcher::MatchImagePair(
       this->options_.lowes_ratio * this->options_.lowes_ratio;
 
   // Compute forward matches.
-  L2 distance;
   matches->reserve(descriptors2.rows);
 
   // Query the KD-tree to get the top 2 nearest neighbors.
