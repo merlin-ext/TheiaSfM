@@ -30,30 +30,30 @@ bool FlannFeatureMatcher::MatchImagePair(
       this->options_.lowes_ratio * this->options_.lowes_ratio;
 
   // Compute forward matches.
-  matches->reserve(descriptors2.size());
+  matches->reserve(descriptors1.size());
 
   // Query the KD-tree to get the top 2 nearest neighbors.
   std::vector<std::vector<float>> nn_distances;
   std::vector<std::vector<int>> nn_indices;
   // Gather descriptors
   Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    eigen_descriptors2(descriptors2.size(), descriptors2.front().size());
-  for (int i = 0; i < descriptors2.size(); i++)
-    eigen_descriptors2.row(i) = descriptors2[i];
+    eigen_descriptors1(descriptors1.size(), descriptors1.front().size());
+  for (int i = 0; i < descriptors1.size(); i++)
+    eigen_descriptors1.row(i) = descriptors1[i];
   // Create the descriptor table
-  flann::Matrix<float> flann_descriptors2(eigen_descriptors2.data(),
-                                          eigen_descriptors2.rows(), eigen_descriptors2.cols());
+  flann::Matrix<float> flann_descriptors1(eigen_descriptors1.data(),
+                                          eigen_descriptors1.rows(), eigen_descriptors1.cols());
 
-  const flann::Index<flann::L2<float>>& index1 = indexed_images_.at(features1.image_name);
-  index1.knnSearch(flann_descriptors2, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
+  const flann::Index<flann::L2<float>>& index2 = indexed_images_.at(features2.image_name);
+  index2.knnSearch(flann_descriptors1, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
 
   // Output the matches
-  for (int i = 0; i < descriptors2.size(); i++) {
+  for (int i = 0; i < descriptors1.size(); i++) {
     // Add to the matches vector if lowes ratio test is turned off or it is
     // turned on and passes the test.
     if (!this->options_.use_lowes_ratio ||
         nn_distances[i][0] < sq_lowes_ratio * nn_distances[i][1]) {
-      matches->emplace_back(IndexedFeatureMatch(nn_indices[i][0], i, nn_distances[i][0]));
+      matches->emplace_back(IndexedFeatureMatch(i, nn_indices[i][0], nn_distances[i][0]));
     }
   }
 
@@ -64,28 +64,28 @@ bool FlannFeatureMatcher::MatchImagePair(
   // Compute the symmetric matches, if applicable.
   if (this->options_.keep_only_symmetric_matches) {
     std::vector<IndexedFeatureMatch> reverse_matches;
-    reverse_matches.reserve(descriptors1.size());
+    reverse_matches.reserve(descriptors2.size());
     nn_distances.clear();
     nn_indices.clear();
     // Gather descriptors
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-      eigen_descriptors1(descriptors1.size(), descriptors1.front().size());
-    for (int i = 0; i < descriptors1.size(); i++)
-      eigen_descriptors1.row(i) = descriptors1[i];
+      eigen_descriptors2(descriptors2.size(), descriptors2.front().size());
+    for (int i = 0; i < descriptors2.size(); i++)
+      eigen_descriptors2.row(i) = descriptors2[i];
     // Create the descriptor table
-    flann::Matrix<float> flann_descriptors1(eigen_descriptors1.data(),
-                                            eigen_descriptors1.rows(), eigen_descriptors1.cols());
+    flann::Matrix<float> flann_descriptors2(eigen_descriptors2.data(),
+                                            eigen_descriptors2.rows(), eigen_descriptors2.cols());
 
-    const flann::Index<flann::L2<float>>& index2 = indexed_images_.at(features2.image_name);
-    index2.knnSearch(flann_descriptors1, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
+    const flann::Index<flann::L2<float>>& index1 = indexed_images_.at(features1.image_name);
+    index1.knnSearch(flann_descriptors2, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
 
     // Output the matches
-    for (int i = 0; i < descriptors1.size(); i++) {
+    for (int i = 0; i < descriptors2.size(); i++) {
       // Add to the matches vector if lowes ratio test is turned off or it is
       // turned on and passes the test.
       if (!this->options_.use_lowes_ratio ||
           nn_distances[i][0] < sq_lowes_ratio * nn_distances[i][1]) {
-        reverse_matches.emplace_back(IndexedFeatureMatch(nn_indices[i][0], i, nn_distances[i][0]));
+        reverse_matches.emplace_back(IndexedFeatureMatch(i, nn_indices[i][0], nn_distances[i][0]));
       }
     }
 
