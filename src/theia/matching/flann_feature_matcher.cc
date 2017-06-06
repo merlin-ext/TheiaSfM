@@ -120,7 +120,7 @@ void FlannFeatureMatcher::AddImage(
 
     // Create the searchable KD-tree with FLANN.
     flann::Index<flann::L2<float> > flann_kd_tree(
-        flann_descriptors, flann::KDTreeSingleIndexParams());
+        flann_descriptors, flann::KDTreeIndexParams(1));
     flann_kd_tree.buildIndex();
     indexed_images_.emplace(image, flann_kd_tree);
 

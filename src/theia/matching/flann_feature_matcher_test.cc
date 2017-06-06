@@ -14,7 +14,7 @@ namespace theia {
 
 using Eigen::VectorXf;
 
-static const int kNumDescriptors = 1000;
+static const int kNumDescriptors = 5000;
 static const int kNumDescriptorDimensions = 64;
 std::shared_ptr<RandomNumberGenerator> rng = std::make_shared<RandomNumberGenerator>(55);
 
