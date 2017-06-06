@@ -41,7 +41,6 @@ class FlannFeatureMatcher : public FeatureMatcher {
                       std::vector<IndexedFeatureMatch>* matches) override;
 
   std::unordered_map<std::string, flann::Index<flann::L2<float>>>  indexed_images_;
-  std::unordered_map<std::string, flann::Matrix<float> >  image_descriptors_;
 
   DISALLOW_COPY_AND_ASSIGN(FlannFeatureMatcher);
 };
