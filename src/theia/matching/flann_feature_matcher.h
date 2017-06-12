@@ -20,9 +20,27 @@ namespace theia {
     struct IndexedFeatureMatch;
     struct KeypointsAndDescriptors;
 
-// Performs features matching between two sets of features using a cascade
-// hashing approach. This hashing does not require any training and is extremely
-// efficient but can only be used with float features like SIFT.
+    typedef flann::Index<flann::L2<float>> FlannIndex;
+    typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> FlannTable;
+
+// Simple container class to hold a FLANN index and a table structure to query features
+class FlannIndexedImage
+{
+ public:
+  FlannIndexedImage(const std::vector<Eigen::VectorXf>& descriptors);
+
+  const FlannIndex* getIndex() { return index_.get(); }
+
+  const flann::Matrix<float>* getTable() { return flann_table_.get(); }
+
+ private:
+  std::unique_ptr<FlannTable> table_; // Eigen table, will be destroyed safely
+  std::unique_ptr<FlannIndex> index_; // Flann index to perform searches
+  std::unique_ptr<flann::Matrix<float>> flann_table_; // Flann data wrapper. No need to destroy
+};
+
+// Performs features matching between two sets of features using a FLANN
+// indexing approach.
 class FlannFeatureMatcher : public FeatureMatcher {
  public:
   explicit FlannFeatureMatcher(const FeatureMatcherOptions& options)
@@ -40,7 +58,8 @@ class FlannFeatureMatcher : public FeatureMatcher {
                       const KeypointsAndDescriptors& features2,
                       std::vector<IndexedFeatureMatch>* matches) override;
 
-  std::unordered_map<std::string, flann::Index<flann::L2<float>>>  indexed_images_;
+  std::unordered_map<std::string, std::shared_ptr<FlannIndexedImage> > indexed_images_;
+  //std::unordered_map<std::string, std::shared_ptr<FlannTable> > image_descriptors_;
 
   DISALLOW_COPY_AND_ASSIGN(FlannFeatureMatcher);
 };

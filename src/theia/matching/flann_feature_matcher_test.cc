@@ -14,7 +14,7 @@ namespace theia {
 
 using Eigen::VectorXf;
 
-static const int kNumDescriptors = 5000;
+static const int kNumDescriptors = 10000;
 static const int kNumDescriptorDimensions = 64;
 std::shared_ptr<RandomNumberGenerator> rng = std::make_shared<RandomNumberGenerator>(55);
 
@@ -27,7 +27,7 @@ TEST(FlannFeatureMatcherTest, NoOptionsInCore) {
     rng->SetRandom(&rand_vec);
     rand_vec.normalize();
     descriptor1.emplace_back(rand_vec);
-    descriptor2.emplace_back(rand_vec);
+    descriptor2.emplace_back(rand_vec + rand_vec/5);
   }
 
   // Set options.
@@ -63,9 +63,7 @@ TEST(FlannFeatureMatcherTest, RatioTestInCore) {
     rng->SetRandom(&rand_vec);
     rand_vec.normalize();
     descriptor1.emplace_back(rand_vec);
-    rng->SetRandom(&rand_vec);
-    rand_vec.normalize();
-    descriptor2.emplace_back(rand_vec);
+    descriptor2.emplace_back(rand_vec + rand_vec/5);
   }
 
   // Set options.
@@ -101,7 +99,7 @@ TEST(FlannFeatureMatcherTest, SymmetricMatchesInCore) {
     rng->SetRandom(&rand_vec);
     rand_vec.normalize();
     descriptor1.emplace_back(rand_vec);
-    descriptor2.emplace_back(rand_vec);
+    descriptor2.emplace_back(rand_vec + rand_vec/5);
   }
 
   // Set options.
@@ -137,7 +135,7 @@ TEST(FlannFeatureMatcherTest, NoOptionsOutOfCore) {
     rng->SetRandom(&rand_vec);
     rand_vec.normalize();
     descriptor1.emplace_back(rand_vec);
-    descriptor2.emplace_back(rand_vec);
+    descriptor2.emplace_back(rand_vec + rand_vec/5);
   }
 
   // Set options.
@@ -173,9 +171,7 @@ TEST(FlannFeatureMatcherTest, RatioTestOutOfCore) {
     rng->SetRandom(&rand_vec);
     rand_vec.normalize();
     descriptor1.emplace_back(rand_vec);
-    rng->SetRandom(&rand_vec);
-    rand_vec.normalize();
-    descriptor2.emplace_back(rand_vec);
+    descriptor2.emplace_back(rand_vec + rand_vec/5);
   }
 
   // Set options.
@@ -211,7 +207,7 @@ TEST(FlannFeatureMatcherTest, SymmetricMatchesOutOfCore) {
     rng->SetRandom(&rand_vec);
     rand_vec.normalize();
     descriptor1.emplace_back(rand_vec);
-    descriptor2.emplace_back(rand_vec);
+    descriptor2.emplace_back(rand_vec + rand_vec/5);
   }
 
   // Set options.

@@ -7,12 +7,23 @@
 #include <algorithm>
 #include <vector>
 
-#include "theia/matching/distance.h"
 #include "theia/matching/flann_feature_matcher.h"
 #include "theia/matching/feature_matcher_utils.h"
-#include "theia/matching/indexed_feature_match.h"
+#include "omp.h"
 
 namespace theia {
+
+FlannIndexedImage::FlannIndexedImage(const std::vector<Eigen::VectorXf>& descriptors)
+{
+  table_ = std::unique_ptr<FlannTable>(new FlannTable(descriptors.size(), descriptors.front().size()));
+  for (int i = 0; i < descriptors.size(); i++)
+    table_->row(i) = descriptors[i];
+
+  flann_table_ = std::unique_ptr<flann::Matrix<float>>(new flann::Matrix<float>(table_->data(), table_->rows(),
+                                                                                table_->cols()));
+  index_ = std::unique_ptr<FlannIndex>(new FlannIndex(*flann_table_, flann::KDTreeIndexParams(1)));
+  index_->buildIndex();
+}
 
 bool FlannFeatureMatcher::MatchImagePair(
         const KeypointsAndDescriptors &features1,
@@ -20,35 +31,22 @@ bool FlannFeatureMatcher::MatchImagePair(
         std::vector<IndexedFeatureMatch> *matches)
 {
   static const int kNumNearestNeighbors = 2;
-  //const flann::Matrix<float>& descriptors1 = image_descriptors_[features1.image_name];
-  //const flann::Matrix<float>& descriptors2 = image_descriptors_[features2.image_name];
-  const std::vector<Eigen::VectorXf>& descriptors1 = features1.descriptors;
-  const std::vector<Eigen::VectorXf>& descriptors2 = features2.descriptors;
-  matches->reserve(descriptors1.size());
 
   const double sq_lowes_ratio =
       this->options_.lowes_ratio * this->options_.lowes_ratio;
 
   // Compute forward matches.
-  matches->reserve(descriptors1.size());
-
   // Query the KD-tree to get the top 2 nearest neighbors.
   std::vector<std::vector<float>> nn_distances;
   std::vector<std::vector<int>> nn_indices;
-  // Gather descriptors
-  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    eigen_descriptors1(descriptors1.size(), descriptors1.front().size());
-  for (int i = 0; i < descriptors1.size(); i++)
-    eigen_descriptors1.row(i) = descriptors1[i];
-  // Create the descriptor table
-  flann::Matrix<float> flann_descriptors1(eigen_descriptors1.data(),
-                                          eigen_descriptors1.rows(), eigen_descriptors1.cols());
+  flann::SearchParams params(128);
 
-  const flann::Index<flann::L2<float>>& index2 = indexed_images_.at(features2.image_name);
-  index2.knnSearch(flann_descriptors1, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
+  const FlannIndex* index2 = indexed_images_[features2.image_name].get()->getIndex();
+  const flann::Matrix<float>* flann_descriptors1 = indexed_images_[features1.image_name].get()->getTable();
+  index2->knnSearch(*flann_descriptors1, nn_indices, nn_distances, kNumNearestNeighbors, params);
 
   // Output the matches
-  for (int i = 0; i < descriptors1.size(); i++) {
+  for (int i = 0; i < flann_descriptors1->rows; i++) {
     // Add to the matches vector if lowes ratio test is turned off or it is
     // turned on and passes the test.
     if (!this->options_.use_lowes_ratio ||
@@ -64,23 +62,15 @@ bool FlannFeatureMatcher::MatchImagePair(
   // Compute the symmetric matches, if applicable.
   if (this->options_.keep_only_symmetric_matches) {
     std::vector<IndexedFeatureMatch> reverse_matches;
-    reverse_matches.reserve(descriptors2.size());
     nn_distances.clear();
     nn_indices.clear();
-    // Gather descriptors
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-      eigen_descriptors2(descriptors2.size(), descriptors2.front().size());
-    for (int i = 0; i < descriptors2.size(); i++)
-      eigen_descriptors2.row(i) = descriptors2[i];
-    // Create the descriptor table
-    flann::Matrix<float> flann_descriptors2(eigen_descriptors2.data(),
-                                            eigen_descriptors2.rows(), eigen_descriptors2.cols());
 
-    const flann::Index<flann::L2<float>>& index1 = indexed_images_.at(features1.image_name);
-    index1.knnSearch(flann_descriptors2, nn_indices, nn_distances, kNumNearestNeighbors, flann::SearchParams());
+    const FlannIndex* index1 = indexed_images_[features1.image_name].get()->getIndex();
+    const flann::Matrix<float>* flann_descriptors2 = indexed_images_[features2.image_name].get()->getTable();
+    index1->knnSearch(*flann_descriptors2, nn_indices, nn_distances, kNumNearestNeighbors, params);
 
     // Output the matches
-    for (int i = 0; i < descriptors2.size(); i++) {
+    for (int i = 0; i < flann_descriptors2->rows; i++) {
       // Add to the matches vector if lowes ratio test is turned off or it is
       // turned on and passes the test.
       if (!this->options_.use_lowes_ratio ||
@@ -106,23 +96,7 @@ void FlannFeatureMatcher::AddImage(
 
   // Create the kd-tree.
   if (!ContainsKey(indexed_images_, image)) {
-    // Gather the descriptors.
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-      eigen_descriptors(descriptors.size(),
-                            descriptors.front().size());
-    for (int i = 0; i < descriptors.size(); i++)
-      eigen_descriptors.row(i) = descriptors[i];
-
-    // Create the descriptor table
-    flann::Matrix<float> flann_descriptors(
-        eigen_descriptors.data(), eigen_descriptors.rows(),
-        eigen_descriptors.cols());
-
-    // Create the searchable KD-tree with FLANN.
-    flann::Index<flann::L2<float> > flann_kd_tree(
-        flann_descriptors, flann::KDTreeIndexParams(1));
-    flann_kd_tree.buildIndex();
-    indexed_images_.emplace(image, flann_kd_tree);
+    indexed_images_.emplace(image, std::make_shared<FlannIndexedImage>(descriptors));
 
     VLOG(1) << "Created the kd-tree index for image: " << image;
   }
