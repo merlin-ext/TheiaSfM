@@ -64,7 +64,7 @@ class FlannFeatureMatcher : public FeatureMatcher {
                       std::vector<IndexedFeatureMatch>* matches) override;
 
   std::unordered_map<std::string, std::shared_ptr<FlannIndexedImage> > indexed_images_;
-  std::mutex indexed_images_lock_;
+  std::mutex indexed_images_lock_; // locks the addition of data to indexed_images_, image_names_, and intrinsics_
 
   DISALLOW_COPY_AND_ASSIGN(FlannFeatureMatcher);
 };
