@@ -9,7 +9,8 @@
 
 #include "theia/matching/flann_feature_matcher.h"
 #include "theia/matching/feature_matcher_utils.h"
-#include "omp.h"
+#include "theia/io/read_keypoints_and_descriptors.h"
+#include "theia/io/write_keypoints_and_descriptors.h"
 
 namespace theia {
 
@@ -40,6 +41,7 @@ bool FlannFeatureMatcher::MatchImagePair(
   std::vector<std::vector<float>> nn_distances;
   std::vector<std::vector<int>> nn_indices;
   flann::SearchParams params(128);
+  params.cores = 0;
 
   const FlannIndex* index2 = indexed_images_[features2.image_name].get()->getIndex();
   const flann::Matrix<float>* flann_descriptors1 = indexed_images_[features1.image_name].get()->getTable();
@@ -47,7 +49,7 @@ bool FlannFeatureMatcher::MatchImagePair(
 
   // Output the matches
   for (int i = 0; i < flann_descriptors1->rows; i++) {
-    // Add to the matches vector if lowes ratio test is turned off or it is
+    // Add to the matches vector if lowes ratio test is turned off or it isq
     // turned on and passes the test.
     if (!this->options_.use_lowes_ratio ||
         nn_distances[i][0] < sq_lowes_ratio * nn_distances[i][1]) {
@@ -86,17 +88,50 @@ bool FlannFeatureMatcher::MatchImagePair(
 }
 
 void FlannFeatureMatcher::AddImage(
+    const std::string& image_name,
+    const std::vector<Keypoint>& keypoints,
+    const std::vector<Eigen::VectorXf>& descriptors,
+    const CameraIntrinsicsPrior& intrinsics) {
+  AddImage(image_name, keypoints, descriptors);
+  std::lock_guard<std::mutex> lock(indexed_images_lock_);
+  intrinsics_[image_name] = intrinsics;
+}
+
+void FlannFeatureMatcher::AddImage(
     const std::string& image,
     const std::vector<Keypoint>& keypoints,
     const std::vector<Eigen::VectorXf>& descriptors)
 {
   // This will save the descriptors and keypoints to disk and set up our LRU
   // cache.
-  FeatureMatcher::AddImage(image, keypoints, descriptors);
+  {
+      std::lock_guard<std::mutex> lock(indexed_images_lock_);
+      image_names_.push_back(image);
+  }
+
+  // Write the features file to disk.
+  const std::string features_file = FeatureFilenameFromImage(image);
+  if (options_.match_out_of_core) {
+      CHECK(WriteKeypointsAndDescriptors(features_file,
+                                         keypoints,
+                                         descriptors))
+      << "Could not read features for image " << image << " from file "
+      << features_file;
+  }
+
+  // Insert the features into the cache.
+  std::shared_ptr<KeypointsAndDescriptors> keypoints_and_descriptors(new KeypointsAndDescriptors);
+  keypoints_and_descriptors->image_name = image;
+  keypoints_and_descriptors->keypoints = keypoints;
+  keypoints_and_descriptors->descriptors = descriptors;
+  keypoints_and_descriptors_cache_->Insert(features_file,
+                                           keypoints_and_descriptors);
 
   // Create the kd-tree.
   if (!ContainsKey(indexed_images_, image)) {
-    indexed_images_.emplace(image, std::make_shared<FlannIndexedImage>(descriptors));
+    std::shared_ptr<FlannIndexedImage> indexed_image(new FlannIndexedImage(descriptors));
+    std::lock_guard<std::mutex> lock(indexed_images_lock_);
+    indexed_images_.emplace(image, indexed_image);
 
     VLOG(1) << "Created the kd-tree index for image: " << image;
   }
