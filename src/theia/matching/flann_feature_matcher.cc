@@ -104,18 +104,18 @@ void FlannFeatureMatcher::AddImage(
   // This will save the descriptors and keypoints to disk and set up our LRU
   // cache.
   {
-      std::lock_guard<std::mutex> lock(indexed_images_lock_);
-      image_names_.push_back(image);
+    std::lock_guard<std::mutex> lock(indexed_images_lock_);
+    image_names_.push_back(image);
   }
 
   // Write the features file to disk.
   const std::string features_file = FeatureFilenameFromImage(image);
   if (options_.match_out_of_core) {
-      CHECK(WriteKeypointsAndDescriptors(features_file,
-                                         keypoints,
-                                         descriptors))
-      << "Could not read features for image " << image << " from file "
-      << features_file;
+    CHECK(WriteKeypointsAndDescriptors(features_file,
+                                       keypoints,
+                                       descriptors))
+    << "Could not read features for image " << image << " from file "
+    << features_file;
   }
 
   // Insert the features into the cache.
@@ -127,11 +127,16 @@ void FlannFeatureMatcher::AddImage(
                                            keypoints_and_descriptors);
 
   // Create the kd-tree.
-  if (!ContainsKey(indexed_images_, image)) {
+  bool contains_key;
+  {
+    std::lock_guard<std::mutex> lock(indexed_images_lock_);
+    contains_key = ContainsKey(indexed_images_, image);
+  }
+
+  if (!contains_key) {
     std::shared_ptr<FlannIndexedImage> indexed_image(new FlannIndexedImage(descriptors));
     std::lock_guard<std::mutex> lock(indexed_images_lock_);
     indexed_images_.emplace(image, indexed_image);
-
     VLOG(1) << "Created the kd-tree index for image: " << image;
   }
 }
