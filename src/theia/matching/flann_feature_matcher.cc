@@ -41,7 +41,6 @@ bool FlannFeatureMatcher::MatchImagePair(
   std::vector<std::vector<float>> nn_distances;
   std::vector<std::vector<int>> nn_indices;
   flann::SearchParams params(128);
-  params.cores = 0;
 
   const FlannIndex* index2 = indexed_images_[features2.image_name].get()->getIndex();
   const flann::Matrix<float>* flann_descriptors1 = indexed_images_[features1.image_name].get()->getTable();
@@ -49,7 +48,7 @@ bool FlannFeatureMatcher::MatchImagePair(
 
   // Output the matches
   for (int i = 0; i < flann_descriptors1->rows; i++) {
-    // Add to the matches vector if lowes ratio test is turned off or it isq
+    // Add to the matches vector if lowes ratio test is turned off or it is
     // turned on and passes the test.
     if (!this->options_.use_lowes_ratio ||
         nn_distances[i][0] < sq_lowes_ratio * nn_distances[i][1]) {
