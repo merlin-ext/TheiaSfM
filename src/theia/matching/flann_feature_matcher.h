@@ -53,13 +53,18 @@ class FlannFeatureMatcher : public FeatureMatcher {
                 const std::vector<Keypoint>& keypoints,
                 const std::vector<Eigen::VectorXf>& descriptors) override;
 
+  void AddImage(const std::string& image_name,
+                const std::vector<Keypoint>& keypoints,
+                const std::vector<Eigen::VectorXf>& descriptors,
+                const CameraIntrinsicsPrior& intrinsics) override;
+
  private:
   bool MatchImagePair(const KeypointsAndDescriptors& features1,
                       const KeypointsAndDescriptors& features2,
                       std::vector<IndexedFeatureMatch>* matches) override;
 
   std::unordered_map<std::string, std::shared_ptr<FlannIndexedImage> > indexed_images_;
-  //std::unordered_map<std::string, std::shared_ptr<FlannTable> > image_descriptors_;
+  std::mutex indexed_images_lock_; // locks the addition of data to indexed_images_, image_names_, and intrinsics_
 
   DISALLOW_COPY_AND_ASSIGN(FlannFeatureMatcher);
 };

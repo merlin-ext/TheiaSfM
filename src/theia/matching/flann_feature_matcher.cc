@@ -9,7 +9,8 @@
 
 #include "theia/matching/flann_feature_matcher.h"
 #include "theia/matching/feature_matcher_utils.h"
-#include "omp.h"
+#include "theia/io/read_keypoints_and_descriptors.h"
+#include "theia/io/write_keypoints_and_descriptors.h"
 
 namespace theia {
 
@@ -86,18 +87,56 @@ bool FlannFeatureMatcher::MatchImagePair(
 }
 
 void FlannFeatureMatcher::AddImage(
+    const std::string& image_name,
+    const std::vector<Keypoint>& keypoints,
+    const std::vector<Eigen::VectorXf>& descriptors,
+    const CameraIntrinsicsPrior& intrinsics) {
+  AddImage(image_name, keypoints, descriptors);
+  std::lock_guard<std::mutex> lock(indexed_images_lock_);
+  intrinsics_[image_name] = intrinsics;
+}
+
+void FlannFeatureMatcher::AddImage(
     const std::string& image,
     const std::vector<Keypoint>& keypoints,
     const std::vector<Eigen::VectorXf>& descriptors)
 {
   // This will save the descriptors and keypoints to disk and set up our LRU
   // cache.
-  FeatureMatcher::AddImage(image, keypoints, descriptors);
+  {
+    std::lock_guard<std::mutex> lock(indexed_images_lock_);
+    image_names_.push_back(image);
+  }
+
+  // Write the features file to disk.
+  const std::string features_file = FeatureFilenameFromImage(image);
+  if (options_.match_out_of_core) {
+    CHECK(WriteKeypointsAndDescriptors(features_file,
+                                       keypoints,
+                                       descriptors))
+    << "Could not read features for image " << image << " from file "
+    << features_file;
+  }
+
+  // Insert the features into the cache.
+  std::shared_ptr<KeypointsAndDescriptors> keypoints_and_descriptors(new KeypointsAndDescriptors);
+  keypoints_and_descriptors->image_name = image;
+  keypoints_and_descriptors->keypoints = keypoints;
+  keypoints_and_descriptors->descriptors = descriptors;
+  keypoints_and_descriptors_cache_->Insert(features_file,
+                                           keypoints_and_descriptors);
 
   // Create the kd-tree.
-  if (!ContainsKey(indexed_images_, image)) {
-    indexed_images_.emplace(image, std::make_shared<FlannIndexedImage>(descriptors));
+  bool contains_key;
+  {
+    std::lock_guard<std::mutex> lock(indexed_images_lock_);
+    contains_key = ContainsKey(indexed_images_, image);
+  }
 
+  if (!contains_key) {
+    std::shared_ptr<FlannIndexedImage> indexed_image(new FlannIndexedImage(descriptors));
+    std::lock_guard<std::mutex> lock(indexed_images_lock_);
+    indexed_images_.emplace(image, indexed_image);
     VLOG(1) << "Created the kd-tree index for image: " << image;
   }
 }
