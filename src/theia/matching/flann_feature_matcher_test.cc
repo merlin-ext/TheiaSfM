@@ -32,6 +32,7 @@ TEST(FlannFeatureMatcherTest, NoOptionsInCore) {
 
   // Set options.
   FeatureMatcherOptions options;
+  options.num_threads = omp_get_max_threads();
   options.match_out_of_core = false;
   options.keypoints_and_descriptors_output_dir = "";
   options.min_num_feature_matches = 0;
@@ -68,6 +69,7 @@ TEST(FlannFeatureMatcherTest, RatioTestInCore) {
 
   // Set options.
   FeatureMatcherOptions options;
+  options.num_threads = omp_get_max_threads();
   options.match_out_of_core = false;
   options.keypoints_and_descriptors_output_dir = "";
   options.min_num_feature_matches = 0;
@@ -104,6 +106,7 @@ TEST(FlannFeatureMatcherTest, SymmetricMatchesInCore) {
 
   // Set options.
   FeatureMatcherOptions options;
+  options.num_threads = omp_get_max_threads();
   options.match_out_of_core = false;
   options.keypoints_and_descriptors_output_dir = "";
   options.min_num_feature_matches = 0;
@@ -140,6 +143,7 @@ TEST(FlannFeatureMatcherTest, NoOptionsOutOfCore) {
 
   // Set options.
   FeatureMatcherOptions options;
+  options.num_threads = omp_get_max_threads();
   options.match_out_of_core = true;
   options.keypoints_and_descriptors_output_dir = GTEST_TESTING_OUTPUT_DIRECTORY;
   options.min_num_feature_matches = 0;
@@ -176,6 +180,7 @@ TEST(FlannFeatureMatcherTest, RatioTestOutOfCore) {
 
   // Set options.
   FeatureMatcherOptions options;
+  options.num_threads = omp_get_max_threads();
   options.match_out_of_core = true;
   options.keypoints_and_descriptors_output_dir = GTEST_TESTING_OUTPUT_DIRECTORY;
   options.min_num_feature_matches = 0;
@@ -212,6 +217,7 @@ TEST(FlannFeatureMatcherTest, SymmetricMatchesOutOfCore) {
 
   // Set options.
   FeatureMatcherOptions options;
+  options.num_threads = omp_get_max_threads();
   options.match_out_of_core = true;
   options.keypoints_and_descriptors_output_dir = GTEST_TESTING_OUTPUT_DIRECTORY;
   options.min_num_feature_matches = 0;
