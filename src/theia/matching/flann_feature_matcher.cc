@@ -41,7 +41,7 @@ bool FlannFeatureMatcher::MatchImagePair(
   std::vector<std::vector<float>> nn_distances;
   std::vector<std::vector<int>> nn_indices;
   flann::SearchParams params(128);
-  params.cores = 4;
+  params.cores = num_threads_;
 
   const FlannIndex* index2 = indexed_images_[features2.image_name].get()->getIndex();
   const flann::Matrix<float>* flann_descriptors1 = indexed_images_[features1.image_name].get()->getTable();
