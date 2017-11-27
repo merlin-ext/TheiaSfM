@@ -38,6 +38,7 @@
 #include <Eigen/SparseCore>
 
 namespace theia {
+LinearOperator::~LinearOperator() { }
 
 SparseMatrix::SparseMatrix(const Eigen::SparseMatrix<double>& matrix)
     : matrix_(matrix) {}
