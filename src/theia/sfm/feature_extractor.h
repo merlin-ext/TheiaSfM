@@ -78,6 +78,7 @@ class FeatureExtractor {
                std::vector<std::vector<Keypoint> >* keypoints,
                std::vector<std::vector<Eigen::VectorXf> >* descriptors);
 
+  // Method to extract descriptors from FloatImages
   bool Extract(const std::vector<FloatImage>& images,
                std::vector<std::vector<Keypoint> >* keypoints,
                std::vector<std::vector<Eigen::VectorXf> >* descriptors);
@@ -93,9 +94,10 @@ class FeatureExtractor {
                        std::vector<Keypoint>* keypoints,
                        std::vector<Eigen::VectorXf>* descriptors);
 
+  // Extracts the features from a FloatImage
   bool ExtractFeaturesFromImage(const FloatImage& image,
-                       std::vector<Keypoint>* keypoints,
-                       std::vector<Eigen::VectorXf>* descriptors);
+                                std::vector<Keypoint>* keypoints,
+                                std::vector<Eigen::VectorXf>* descriptors);
 
   const Options options_;
   bool write_features_to_disk_;

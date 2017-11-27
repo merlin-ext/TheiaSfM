@@ -58,11 +58,11 @@ TEST(RandomSampler, UniqueMinimalSample) {
       std::make_shared<RandomNumberGenerator>(55);
   static const int kMinNumSamples = 3;
   const std::vector<int> data_points = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-  RandomSampler<int> sampler(rng, kMinNumSamples);
-  CHECK(sampler.Initialize());
+  RandomSampler sampler(rng, kMinNumSamples);
+  CHECK(sampler.Initialize(data_points.size()));
   for (int i = 0; i < 100; i++) {
     std::vector<int> subset;
-    EXPECT_TRUE(sampler.Sample(data_points, &subset));
+    EXPECT_TRUE(sampler.Sample(&subset));
 
     // Make sure that the sampling is unique.
     EXPECT_EQ(subset.size(), kMinNumSamples);

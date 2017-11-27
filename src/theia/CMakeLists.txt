@@ -32,6 +32,24 @@
 # Please contact the author of this library if you have any questions.
 # Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
 
+function(create_resource_file file output)
+    # Create empty output file
+    file(WRITE ${output} "")
+    # Get short filename
+    get_filename_component(filename "${file}" NAME)
+    # Replace filename spaces & extension separator for C compatibility
+    string(MAKE_C_IDENTIFIER ${filename} filename)
+    # Read hex data from file
+    file(READ ${file} filedata HEX)
+    # Convert hex data for C compatibility
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+    # Append data to output file
+    file(WRITE ${output} "const char ${filename}[] = {${filedata}};\nconst size_t ${filename}_size = sizeof(${filename});\n")
+endfunction()
+
+create_resource_file("${PROJECT_SOURCE_DIR}/data/camera_sensor_database.txt" "${CMAKE_CURRENT_BINARY_DIR}/camera_sensor_database.h")
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 # Add headers
 file(GLOB_RECURSE THEIA_HDRS *.h)
 
@@ -67,20 +85,25 @@ set(THEIA_SRC
   matching/feature_matcher.cc
   matching/feature_matcher_utils.cc
   matching/guided_epipolar_matcher.cc
+  matching/flann_feature_matcher.cc
   math/closed_form_polynomial_solver.cc
+  math/constrained_l1_solver.cc
   math/find_polynomial_roots_companion_matrix.cc
   math/find_polynomial_roots_jenkins_traub.cc
   math/matrix/sparse_cholesky_llt.cc
+  math/matrix/sparse_matrix.cc
   math/polynomial.cc
   math/probability/sequential_probability_ratio.cc
   math/rotation.cc
   math/qp_solver.cc
   sfm/bundle_adjustment/bundle_adjust_two_views.cc
+  sfm/bundle_adjustment/bundle_adjuster.cc
   sfm/bundle_adjustment/bundle_adjustment.cc
   sfm/bundle_adjustment/create_loss_function.cc
   sfm/bundle_adjustment/optimize_relative_position_with_known_rotation.cc
   sfm/camera/camera.cc
   sfm/camera/camera_intrinsics_model.cc
+  sfm/camera/division_undistortion_camera_model.cc
   sfm/camera/fisheye_camera_model.cc
   sfm/camera/fov_camera_model.cc
   sfm/camera/pinhole_camera_model.cc
@@ -89,12 +112,14 @@ set(THEIA_SRC
   sfm/colorize_reconstruction.cc
   sfm/estimate_track.cc
   sfm/estimate_twoview_info.cc
+  sfm/estimators/estimate_absolute_pose_with_known_orientation.cc
   sfm/estimators/estimate_calibrated_absolute_pose.cc
   sfm/estimators/estimate_dominant_plane_from_points.cc
   sfm/estimators/estimate_essential_matrix.cc
   sfm/estimators/estimate_fundamental_matrix.cc
   sfm/estimators/estimate_homography.cc
   sfm/estimators/estimate_relative_pose.cc
+  sfm/estimators/estimate_relative_pose_with_known_orientation.cc
   sfm/estimators/estimate_similarity_transformation_2d_3d.cc
   sfm/estimators/estimate_triangulation.cc
   sfm/estimators/estimate_uncalibrated_absolute_pose.cc
@@ -120,6 +145,7 @@ set(THEIA_SRC
   sfm/global_pose_estimation/robust_rotation_estimator.cc
   sfm/global_reconstruction_estimator.cc
   sfm/gps_converter.cc
+  sfm/hybrid_reconstruction_estimator.cc
   sfm/incremental_reconstruction_estimator.cc
   sfm/localize_view_to_reconstruction.cc
   sfm/pose/dls_impl.cc
@@ -134,6 +160,8 @@ set(THEIA_SRC
   sfm/pose/four_point_relative_pose_partial_rotation.cc
   sfm/pose/fundamental_matrix_util.cc
   sfm/pose/perspective_three_point.cc
+  sfm/pose/position_from_two_rays.cc
+  sfm/pose/relative_pose_from_two_points_with_known_rotation.cc
   sfm/pose/seven_point_fundamental_matrix.cc
   sfm/pose/sim_transform_partial_rotation.cc
   sfm/pose/test_util.cc
@@ -161,8 +189,11 @@ set(THEIA_SRC
   sfm/view.cc
   sfm/view_graph/orientations_from_maximum_spanning_tree.cc
   sfm/view_graph/remove_disconnected_view_pairs.cc
-  sfm/view_graph/triplet_extractor.cc
   sfm/view_graph/view_graph.cc
+  sfm/visibility_pyramid.cc
+  solvers/exhaustive_sampler.cc
+  solvers/prosac_sampler.cc
+  solvers/random_sampler.cc
   util/filesystem.cc
   util/random.cc
   util/stringprintf.cc
@@ -174,14 +205,15 @@ set(THEIA_LIBRARY_DEPENDENCIES
   ${CERES_LIBRARIES}
   ${GFLAGS_LIBRARIES}
   ${GLOG_LIBRARIES}
-  ${SUITESPARSE_LIBRARIES}
   ${OPENIMAGEIO_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
+  ${_THEIA_CEREAL_LIBRARIES}
+  ${_THEIA_FLANN_LIBRARIES}
   akaze
-  flann_cpp
   statx
   stlplus3
-  vlfeat
-  visual_sfm)
+  visual_sfm
+  vlfeat)
 
 set(THEIA_LIBRARY_SOURCE
   ${THEIA_SRC}
@@ -220,6 +252,7 @@ if (BUILD_TESTING)
   gtest(image/keypoint_detector/sift_detector)
   gtest(matching/brute_force_feature_matcher)
   gtest(matching/cascade_hashing_feature_matcher)
+  gtest(matching/flann_feature_matcher)
   gtest(matching/distance)
   gtest(matching/feature_correspondence)
   gtest(matching/feature_matcher_utils)
@@ -230,6 +263,7 @@ if (BUILD_TESTING)
   gtest(math/graph/connected_components)
   gtest(math/graph/minimum_spanning_tree)
   gtest(math/graph/normalized_graph_cut)
+  gtest(math/graph/triplet_extractor)
   gtest(math/l1_solver)
   gtest(math/matrix/gauss_jordan)
   gtest(math/matrix/rq_decomposition)
@@ -239,17 +273,20 @@ if (BUILD_TESTING)
   gtest(math/rotation)
   gtest(sfm/bundle_adjustment/optimize_relative_position_with_known_rotation)
   gtest(sfm/camera/camera)
+  gtest(sfm/camera/division_undistortion_camera_model)
   gtest(sfm/camera/fisheye_camera_model)
   gtest(sfm/camera/fov_camera_model)
   gtest(sfm/camera/pinhole_camera_model)
   gtest(sfm/camera/pinhole_radial_tangential_camera_model)
   gtest(sfm/camera/projection_matrix_utils)
+  gtest(sfm/estimators/estimate_absolute_pose_with_known_orientation)
   gtest(sfm/estimators/estimate_calibrated_absolute_pose)
   gtest(sfm/estimators/estimate_dominant_plane_from_points)
   gtest(sfm/estimators/estimate_essential_matrix)
   gtest(sfm/estimators/estimate_fundamental_matrix)
   gtest(sfm/estimators/estimate_homography)
   gtest(sfm/estimators/estimate_relative_pose)
+  gtest(sfm/estimators/estimate_relative_pose_with_known_orientation)
   gtest(sfm/estimators/estimate_similarity_transformation_2d_3d)
   gtest(sfm/estimators/estimate_triangulation)
   gtest(sfm/estimators/estimate_uncalibrated_absolute_pose)
@@ -271,6 +308,7 @@ if (BUILD_TESTING)
   gtest(sfm/global_pose_estimation/pairwise_translation_error)
   gtest(sfm/global_pose_estimation/robust_rotation_estimator)
   gtest(sfm/gps_converter)
+  gtest(sfm/hybrid_reconstruction_estimator)
   gtest(sfm/incremental_reconstruction_estimator)
   gtest(sfm/pose/dls_pnp)
   gtest(sfm/pose/eight_point_fundamental_matrix)
@@ -282,6 +320,8 @@ if (BUILD_TESTING)
   gtest(sfm/pose/four_point_relative_pose_partial_rotation)
   gtest(sfm/pose/fundamental_matrix_util)
   gtest(sfm/pose/perspective_three_point)
+  gtest(sfm/pose/position_from_two_rays)
+  gtest(sfm/pose/relative_pose_from_two_points_with_known_rotation)
   gtest(sfm/pose/seven_point_fundamental_matrix)
   gtest(sfm/pose/sim_transform_partial_rotation)
   gtest(sfm/pose/three_point_relative_pose_partial_rotation)
@@ -298,9 +338,9 @@ if (BUILD_TESTING)
   gtest(sfm/view)
   gtest(sfm/view_graph/orientations_from_maximum_spanning_tree)
   gtest(sfm/view_graph/remove_disconnected_view_pairs)
-  gtest(sfm/view_graph/triplet_extractor)
   gtest(sfm/view_graph/view_graph)
-  gtest(solvers/arrsac)
+  gtest(solvers/exhaustive_ransac)
+  gtest(solvers/exhaustive_sampler)
   gtest(solvers/evsac)
   gtest(solvers/lmed)
   gtest(solvers/prosac)
