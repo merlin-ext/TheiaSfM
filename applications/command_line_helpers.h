@@ -97,6 +97,8 @@ inline ReconstructionEstimatorType StringToReconstructionEstimatorType(
     return ReconstructionEstimatorType::GLOBAL;
   } else if (reconstruction_estimator == "INCREMENTAL") {
     return ReconstructionEstimatorType::INCREMENTAL;
+  } else if (reconstruction_estimator == "HYBRID") {
+    return ReconstructionEstimatorType::HYBRID;
   } else {
     LOG(FATAL)
         << "Invalid reconstruction estimator type. Using GLOBAL instead.";
@@ -123,7 +125,7 @@ inline GlobalPositionEstimatorType StringToPositionEstimatorType(
     const std::string& position_estimator) {
   if (position_estimator == "NONLINEAR") {
     return GlobalPositionEstimatorType::NONLINEAR;
-  } else if (position_estimator == "LINEAR") {
+  } else if (position_estimator == "LINEAR_TRIPLET") {
     return GlobalPositionEstimatorType::LINEAR_TRIPLET;
   } else if (position_estimator == "LEAST_UNSQUARED_DEVIATION") {
     return GlobalPositionEstimatorType::LEAST_UNSQUARED_DEVIATION;
