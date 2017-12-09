@@ -44,7 +44,7 @@ class FlannIndexedImage
 class FlannFeatureMatcher : public FeatureMatcher {
  public:
   explicit FlannFeatureMatcher(const FeatureMatcherOptions& options)
-          : FeatureMatcher(options) { options_.num_threads = 1; num_threads_ = options.num_threads; }
+          : FeatureMatcher(options) { options_.num_threads = options.num_threads; num_threads_ = 1; }
   ~FlannFeatureMatcher() {}
 
   // These methods are the same as the base class except that the HashedImage is
@@ -65,7 +65,7 @@ class FlannFeatureMatcher : public FeatureMatcher {
 
   std::unordered_map<std::string, std::shared_ptr<FlannIndexedImage> > indexed_images_;
   std::mutex indexed_images_lock_; // locks the addition of data to indexed_images_, image_names_, and intrinsics_
-  int num_threads_;
+  int num_threads_; // number of cores to use per search
   DISALLOW_COPY_AND_ASSIGN(FlannFeatureMatcher);
 };
 
