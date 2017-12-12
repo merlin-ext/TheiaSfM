@@ -95,7 +95,7 @@ template <typename DatumType, typename ModelType> class Estimator {
   virtual std::vector<double> Residuals(const std::vector<Datum>& data,
                                         const Model& model) const {
     std::vector<double> residuals(data.size());
-#pragma omp parallel for
+//#pragma omp parallel for
     for (int i = 0; i < data.size(); i++) {
       residuals[i] = Error(data[i], model);
     }
